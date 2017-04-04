@@ -1,0 +1,75 @@
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:batch="http://www.springframework.org/schema/batch" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.springframework.org/schema/batch http://www.springframework.org/schema/batch/spring-batch-3.0.xsd
+        http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.0.xsd">
+ 
+    <!-- ItemReader reads a complete line one by one from input file -->
+    <bean id="flatFileItemReader" class="org.springframework.batch.item.file.FlatFileItemReader"  scope="step">
+        <property name="resource" value="classpath:examResult.txt" />
+ 
+        <property name="lineMapper">
+ 
+            <bean class="org.springframework.batch.item.file.mapping.DefaultLineMapper">
+ 
+                <property name="fieldSetMapper">
+                    <!-- Mapper which maps each individual items in a record to properties in POJO -->
+                    <bean class="com.myapp.comparefiles.ExamResultFieldSetMapper" />
+                </property>
+ 
+                <property name="lineTokenizer">
+                    <!-- A tokenizer class to be used when items in input record are separated by specific characters -->
+                    <bean class="org.springframework.batch.item.file.transform.DelimitedLineTokenizer">
+                        <property name="delimiter" value="|" />
+                    </bean>
+                </property>
+ 
+            </bean>
+ 
+        </property>
+ 
+    </bean>
+    
+    <bean id="flatFileItemWriter" class="org.springframework.batch.item.file.FlatFileItemWriter" scope="step">
+ 
+        <property name="resource" value="file:xml/examResult.dat" />
+ 
+        <property name="lineAggregator">
+ 
+            <!-- An Aggregator which converts an object into delimited list of strings -->
+            <bean class="org.springframework.batch.item.file.transform.DelimitedLineAggregator">
+ 
+                <property name="delimiter" value="|" />
+ 
+                <property name="fieldExtractor">
+ 
+                    <!-- Extractor which returns the value of beans property through reflection -->
+                    <bean class="org.springframework.batch.item.file.transform.BeanWrapperFieldExtractor">
+                        <property name="names" value="column1, column2, column3" />
+                    </bean>
+                </property>
+            </bean>
+        </property>
+    </bean>
+    	
+    
+ 
+    <!-- Optional ItemProcessor to perform business logic/filtering on the input records -->
+    <bean id="itemProcessor" class="com.myapp.comparefiles.ExamResultItemProcessor" />
+ 
+    <!-- Optional JobExecutionListener to perform business logic before and after the job -->
+    <bean id="jobListener" class="com.myapp.comparefiles.ExamResultJobListener" />
+ 
+ 
+    <!-- Actual Job -->
+    <batch:job id="examResultJob">
+        <batch:step id="step1">
+            <batch:tasklet transaction-manager="transactionManager">
+                <batch:chunk reader="flatFileItemReader"  writer="flatFileItemWriter" commit-interval="10" />
+            </batch:tasklet>
+        </batch:step>
+        <batch:listeners>
+            <batch:listener ref="jobListener" />
+        </batch:listeners>
+    </batch:job>
+ 
+</beans>
